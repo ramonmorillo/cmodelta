@@ -1,12 +1,30 @@
 function apiResponseOk(data) { return { ok: true, data: data }; }
 function apiResponseError(error) { return { ok: false, error: error && error.message ? error.message : String(error) }; }
 
+function toPatientDto(row) {
+  return {
+    idPaciente: String(row.idPaciente || ''),
+    codigoPaciente: String(row.codigoPaciente || ''),
+    centro: String(row.centro || ''),
+    fechaAlta: String(row.fechaAlta || ''),
+    estado: String(row.estado || ''),
+    tratamientoActivo: String(row.tratamientoActivo || ''),
+    nivelCMOActual: String(row.nivelCMOActual || ''),
+    fechaUltimaVisita: String(row.fechaUltimaVisita || ''),
+    observaciones: String(row.observaciones || '')
+  };
+}
+
 function listPatients(query) {
-  const all = getSheetDataObject('Pacientes');
-  const q = String(query || '').trim().toLowerCase();
-  const filtered = !q ? all : all.filter((p) => String(p.codigoPaciente || '').toLowerCase().includes(q));
-  filtered.sort((a, b) => String(a.codigoPaciente || '').localeCompare(String(b.codigoPaciente || '')));
-  return apiResponseOk(filtered);
+  try {
+    const all = getSheetDataObject('Pacientes').map(toPatientDto);
+    const q = String(query || '').trim().toLowerCase();
+    const filtered = !q ? all : all.filter((p) => String(p.codigoPaciente).toLowerCase().includes(q));
+    filtered.sort((a, b) => String(a.codigoPaciente).localeCompare(String(b.codigoPaciente)));
+    return apiResponseOk(filtered);
+  } catch (e) {
+    return apiResponseError(e);
+  }
 }
 
 function createPatient(data) {
@@ -21,15 +39,30 @@ function createPatient(data) {
     const now = toIsoDateTime(new Date());
     const user = getCurrentUserEmail();
     const idPaciente = createUniqueId('PAC');
-    appendObject('Pacientes', {
-      idPaciente: idPaciente, codigoPaciente: normalizedCode, centro: String(data.centro).trim(),
-      fechaAlta: toDateOnly(data.fechaAlta), estado: data.estado, tratamientoActivo: data.tratamientoActivo,
-      nivelCMOActual: data.nivelCMOActual, fechaUltimaVisita: '', observaciones: data.observaciones || '',
-      createdAt: now, updatedAt: now, createdBy: user, updatedBy: user
-    });
+    const createdPatient = {
+      idPaciente: idPaciente,
+      codigoPaciente: normalizedCode,
+      centro: String(data.centro).trim(),
+      fechaAlta: toDateOnly(data.fechaAlta),
+      estado: String(data.estado || ''),
+      tratamientoActivo: String(data.tratamientoActivo || ''),
+      nivelCMOActual: String(data.nivelCMOActual || ''),
+      fechaUltimaVisita: '',
+      observaciones: String(data.observaciones || '')
+    };
+
+    appendObject('Pacientes', Object.assign({}, createdPatient, {
+      createdAt: now,
+      updatedAt: now,
+      createdBy: user,
+      updatedBy: user
+    }));
+
     logAudit('CREATE', 'Pacientes', idPaciente, 'Alta de paciente ' + normalizedCode);
-    return apiResponseOk({ idPaciente: idPaciente });
-  } catch (e) { return apiResponseError(e); }
+    return apiResponseOk(createdPatient);
+  } catch (e) {
+    return apiResponseError(e);
+  }
 }
 
 function updatePatient(idPaciente, data) {
@@ -43,26 +76,42 @@ function updatePatient(idPaciente, data) {
     if (duplicate) throw new Error('Ya existe un paciente con ese codigoPaciente.');
 
     const changes = {
-      codigoPaciente: normalizedCode, centro: String(data.centro).trim(), fechaAlta: toDateOnly(data.fechaAlta), estado: data.estado,
-      tratamientoActivo: data.tratamientoActivo, nivelCMOActual: data.nivelCMOActual, observaciones: data.observaciones || '',
-      updatedAt: toIsoDateTime(new Date()), updatedBy: getCurrentUserEmail()
+      codigoPaciente: normalizedCode,
+      centro: String(data.centro).trim(),
+      fechaAlta: toDateOnly(data.fechaAlta),
+      estado: String(data.estado || ''),
+      tratamientoActivo: String(data.tratamientoActivo || ''),
+      nivelCMOActual: String(data.nivelCMOActual || ''),
+      observaciones: String(data.observaciones || ''),
+      updatedAt: toIsoDateTime(new Date()),
+      updatedBy: getCurrentUserEmail()
     };
+
     const updated = updateObjectById('Pacientes', 'idPaciente', idPaciente, changes);
     if (!updated) throw new Error('Paciente no encontrado para actualizar.');
+
     logAudit('UPDATE', 'Pacientes', idPaciente, 'Actualización de paciente ' + normalizedCode);
-    return apiResponseOk({ idPaciente: idPaciente });
-  } catch (e) { return apiResponseError(e); }
+    return apiResponseOk(toPatientDto(Object.assign({}, changes, { idPaciente: idPaciente, fechaUltimaVisita: data.fechaUltimaVisita || '' })));
+  } catch (e) {
+    return apiResponseError(e);
+  }
 }
 
 function getPatientBundle(idPaciente) {
   try {
     validatePatientSelected(idPaciente);
-    const patient = getSheetDataObject('Pacientes').find((p) => String(p.idPaciente) === String(idPaciente));
-    if (!patient) throw new Error('Paciente no encontrado.');
-    const byPatient = function (sheetName) { return getSheetDataObject(sheetName).filter((r) => String(r.idPaciente) === String(idPaciente)); };
-    const sortDesc = function (arr, f) { return arr.sort((a, b) => String(b[f] || '').localeCompare(String(a[f] || ''))); };
+    const patientRaw = getSheetDataObject('Pacientes').find((p) => String(p.idPaciente) === String(idPaciente));
+    if (!patientRaw) throw new Error('Paciente no encontrado.');
+
+    const byPatient = function (sheetName) {
+      return getSheetDataObject(sheetName).filter((r) => String(r.idPaciente) === String(idPaciente));
+    };
+    const sortDesc = function (arr, field) {
+      return arr.sort((a, b) => String(b[field] || '').localeCompare(String(a[field] || '')));
+    };
+
     const bundle = {
-      patient: patient,
+      patient: toPatientDto(patientRaw),
       visits: sortDesc(byPatient('VisitasCMO'), 'fecha'),
       dispensations: sortDesc(byPatient('Dispensaciones'), 'fechaReal'),
       activations: sortDesc(byPatient('ActivacionPaciente'), 'fecha'),
@@ -73,7 +122,9 @@ function getPatientBundle(idPaciente) {
     };
     bundle.reportHtml = buildReportHtml(bundle, '');
     return apiResponseOk(bundle);
-  } catch (e) { return apiResponseError(e); }
+  } catch (e) {
+    return apiResponseError(e);
+  }
 }
 
 function createVisit(data) { return apiAddVisita(data); }
