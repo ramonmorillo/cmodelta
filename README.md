@@ -56,3 +56,11 @@ La herramienta está diseñada para trabajar exclusivamente con datos seudonimiz
 - No integra historia clínica electrónica.
 - Informe imprimible básico en HTML.
 - El índice de activación se usa como **índice operativo** de entrevista farmacéutica, no cuestionario validado.
+
+## Versión 1.1 (operativa)
+- Flujo obligatorio: crear/seleccionar paciente antes de registrar.
+- Formularios clínicos ocultos hasta seleccionar paciente.
+- Ficha resumen con tablas por módulo y recarga automática tras guardar.
+- Validaciones frontend + backend con respuesta consistente `{ok,data}` / `{ok,error}`.
+- Informe farmacéutico construido con datos reales del paciente seleccionado.
+
