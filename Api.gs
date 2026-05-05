@@ -1,68 +1,56 @@
 function apiResponseOk(data) { return { ok: true, data: data }; }
 function apiResponseError(error) { return { ok: false, error: error && error.message ? error.message : String(error) }; }
 
+function toText(v) { return String(v || '').trim(); }
 function toPatientDto(row) {
   return {
-    idPaciente: String(row.idPaciente || ''),
-    codigoPaciente: String(row.codigoPaciente || ''),
-    centro: String(row.centro || ''),
-    fechaAlta: String(row.fechaAlta || ''),
-    estado: String(row.estado || ''),
-    tratamientoActivo: String(row.tratamientoActivo || ''),
-    nivelCMOActual: String(row.nivelCMOActual || ''),
-    fechaUltimaVisita: String(row.fechaUltimaVisita || ''),
-    observaciones: String(row.observaciones || '')
+    idPaciente: toText(row.idPaciente),
+    codigoPaciente: toText(row.codigoPaciente),
+    centro: toText(row.centro),
+    fechaAlta: toText(row.fechaAlta),
+    estado: toText(row.estado),
+    tratamientoActivo: toText(row.tratamientoActivo),
+    nivelCMOActual: toText(row.nivelCMOActual),
+    fechaUltimaVisita: toText(row.fechaUltimaVisita),
+    observaciones: toText(row.observaciones)
   };
 }
 
 function listPatients(query) {
   try {
     const all = getSheetDataObject('Pacientes').map(toPatientDto);
-    const q = String(query || '').trim().toLowerCase();
-    const filtered = !q ? all : all.filter((p) => String(p.codigoPaciente).toLowerCase().includes(q));
-    filtered.sort((a, b) => String(a.codigoPaciente).localeCompare(String(b.codigoPaciente)));
+    const q = toText(query).toLowerCase();
+    const filtered = !q ? all : all.filter((p) => p.codigoPaciente.toLowerCase().includes(q));
+    filtered.sort((a, b) => a.codigoPaciente.localeCompare(b.codigoPaciente));
     return apiResponseOk(filtered);
-  } catch (e) {
-    return apiResponseError(e);
-  }
+  } catch (e) { return apiResponseError(e); }
 }
 
 function createPatient(data) {
   try {
     validateRequired(data, ['codigoPaciente', 'centro', 'fechaAlta', 'estado', 'tratamientoActivo', 'nivelCMOActual']);
     validateDate(data.fechaAlta, 'fechaAlta');
-    const normalizedCode = String(data.codigoPaciente).trim().toUpperCase();
-    const all = getSheetDataObject('Pacientes');
-    const duplicate = all.find((p) => String(p.codigoPaciente || '').trim().toUpperCase() === normalizedCode);
+    const normalizedCode = toText(data.codigoPaciente).toUpperCase();
+    const duplicate = getSheetDataObject('Pacientes').find((p) => toText(p.codigoPaciente).toUpperCase() === normalizedCode);
     if (duplicate) throw new Error('Ya existe un paciente con ese codigoPaciente.');
 
     const now = toIsoDateTime(new Date());
     const user = getCurrentUserEmail();
-    const idPaciente = createUniqueId('PAC');
     const createdPatient = {
-      idPaciente: idPaciente,
+      idPaciente: createUniqueId('PAC'),
       codigoPaciente: normalizedCode,
-      centro: String(data.centro).trim(),
+      centro: toText(data.centro),
       fechaAlta: toDateOnly(data.fechaAlta),
-      estado: String(data.estado || ''),
-      tratamientoActivo: String(data.tratamientoActivo || ''),
-      nivelCMOActual: String(data.nivelCMOActual || ''),
+      estado: toText(data.estado),
+      tratamientoActivo: toText(data.tratamientoActivo),
+      nivelCMOActual: toText(data.nivelCMOActual),
       fechaUltimaVisita: '',
-      observaciones: String(data.observaciones || '')
+      observaciones: toText(data.observaciones)
     };
-
-    appendObject('Pacientes', Object.assign({}, createdPatient, {
-      createdAt: now,
-      updatedAt: now,
-      createdBy: user,
-      updatedBy: user
-    }));
-
-    logAudit('CREATE', 'Pacientes', idPaciente, 'Alta de paciente ' + normalizedCode);
+    appendObject('Pacientes', Object.assign({}, createdPatient, { createdAt: now, updatedAt: now, createdBy: user, updatedBy: user }));
+    logAudit('CREATE', 'Pacientes', createdPatient.idPaciente, 'Alta paciente ' + normalizedCode);
     return apiResponseOk(createdPatient);
-  } catch (e) {
-    return apiResponseError(e);
-  }
+  } catch (e) { return apiResponseError(e); }
 }
 
 function updatePatient(idPaciente, data) {
@@ -70,31 +58,24 @@ function updatePatient(idPaciente, data) {
     validatePatientSelected(idPaciente);
     validateRequired(data, ['codigoPaciente', 'centro', 'fechaAlta', 'estado', 'tratamientoActivo', 'nivelCMOActual']);
     validateDate(data.fechaAlta, 'fechaAlta');
-    const normalizedCode = String(data.codigoPaciente).trim().toUpperCase();
-    const all = getSheetDataObject('Pacientes');
-    const duplicate = all.find((p) => String(p.codigoPaciente || '').trim().toUpperCase() === normalizedCode && String(p.idPaciente) !== String(idPaciente));
+    const normalizedCode = toText(data.codigoPaciente).toUpperCase();
+    const duplicate = getSheetDataObject('Pacientes').find((p) => toText(p.codigoPaciente).toUpperCase() === normalizedCode && String(p.idPaciente) !== String(idPaciente));
     if (duplicate) throw new Error('Ya existe un paciente con ese codigoPaciente.');
-
     const changes = {
       codigoPaciente: normalizedCode,
-      centro: String(data.centro).trim(),
+      centro: toText(data.centro),
       fechaAlta: toDateOnly(data.fechaAlta),
-      estado: String(data.estado || ''),
-      tratamientoActivo: String(data.tratamientoActivo || ''),
-      nivelCMOActual: String(data.nivelCMOActual || ''),
-      observaciones: String(data.observaciones || ''),
+      estado: toText(data.estado),
+      tratamientoActivo: toText(data.tratamientoActivo),
+      nivelCMOActual: toText(data.nivelCMOActual),
+      observaciones: toText(data.observaciones),
       updatedAt: toIsoDateTime(new Date()),
       updatedBy: getCurrentUserEmail()
     };
-
-    const updated = updateObjectById('Pacientes', 'idPaciente', idPaciente, changes);
-    if (!updated) throw new Error('Paciente no encontrado para actualizar.');
-
-    logAudit('UPDATE', 'Pacientes', idPaciente, 'Actualización de paciente ' + normalizedCode);
-    return apiResponseOk(toPatientDto(Object.assign({}, changes, { idPaciente: idPaciente, fechaUltimaVisita: data.fechaUltimaVisita || '' })));
-  } catch (e) {
-    return apiResponseError(e);
-  }
+    if (!updateObjectById('Pacientes', 'idPaciente', idPaciente, changes)) throw new Error('Paciente no encontrado.');
+    logAudit('UPDATE', 'Pacientes', idPaciente, 'Actualización paciente ' + normalizedCode);
+    return apiResponseOk(getSheetDataObject('Pacientes').find((p) => String(p.idPaciente) === String(idPaciente)));
+  } catch (e) { return apiResponseError(e); }
 }
 
 function getPatientBundle(idPaciente) {
@@ -102,14 +83,8 @@ function getPatientBundle(idPaciente) {
     validatePatientSelected(idPaciente);
     const patientRaw = getSheetDataObject('Pacientes').find((p) => String(p.idPaciente) === String(idPaciente));
     if (!patientRaw) throw new Error('Paciente no encontrado.');
-
-    const byPatient = function (sheetName) {
-      return getSheetDataObject(sheetName).filter((r) => String(r.idPaciente) === String(idPaciente));
-    };
-    const sortDesc = function (arr, field) {
-      return arr.sort((a, b) => String(b[field] || '').localeCompare(String(a[field] || '')));
-    };
-
+    const byPatient = function (sheetName) { return getSheetDataObject(sheetName).filter((r) => String(r.idPaciente) === String(idPaciente)); };
+    const sortDesc = function (arr, field) { return arr.sort((a, b) => String(b[field] || '').localeCompare(String(a[field] || ''))); };
     const bundle = {
       patient: toPatientDto(patientRaw),
       visits: sortDesc(byPatient('VisitasCMO'), 'fecha'),
@@ -122,9 +97,7 @@ function getPatientBundle(idPaciente) {
     };
     bundle.reportHtml = buildReportHtml(bundle, '');
     return apiResponseOk(bundle);
-  } catch (e) {
-    return apiResponseError(e);
-  }
+  } catch (e) { return apiResponseError(e); }
 }
 
 function createVisit(data) { return apiAddVisita(data); }
@@ -135,20 +108,20 @@ function createResponse(data) { return apiAddRespuesta(data); }
 function createSafetyEvent(data) { return apiAddSeguridad(data); }
 function createIntervention(data) { return apiAddIntervencion(data); }
 
-function apiGetInitialData() { try { return apiResponseOk({ appTitle: APP_TITLE, appSubtitle: APP_SUBTITLE, dataWarning: DATA_WARNING, pacientes: listPatients('').data }); } catch (e) { return apiResponseError(e); } }
-function apiListPacientes(query) { return listPatients(query); }
-function apiSavePaciente(payload) { return payload && payload.idPaciente ? updatePatient(payload.idPaciente, payload) : createPatient(payload); }
-function apiGetPacienteDashboard(idPaciente) { return getPatientBundle(idPaciente); }
+function apiGetInitialData() {
+  try { return apiResponseOk({ appTitle: APP_TITLE, appSubtitle: APP_SUBTITLE, dataWarning: DATA_WARNING, pacientes: listPatients('').data }); }
+  catch (e) { return apiResponseError(e); }
+}
 
-function apiAddVisita(data) { try { validatePatientSelected(data.idPaciente); validateRequired(data, ['fecha', 'tipoVisita', 'modalidad', 'nivelCMO']); validateDate(data.fecha, 'fecha'); const idVisita = createUniqueId('VIS'); appendCommon('VisitasCMO', 'idVisita', idVisita, Object.assign({}, data, { fecha: toDateOnly(data.fecha) })); updateObjectById('Pacientes', 'idPaciente', data.idPaciente, { fechaUltimaVisita: toDateOnly(data.fecha), nivelCMOActual: data.nivelCMO, updatedAt: toIsoDateTime(new Date()), updatedBy: getCurrentUserEmail() }); return apiResponseOk({ idVisita: idVisita }); } catch (e) { return apiResponseError(e); } }
-function apiAddDispensacion(data) { try { validatePatientSelected(data.idPaciente); validateRequired(data, ['fechaPrevista', 'fechaReal']); validateDate(data.fechaPrevista, 'fechaPrevista'); validateDate(data.fechaReal, 'fechaReal'); const retraso = calculateDelayDays(data.fechaPrevista, data.fechaReal); const id = createUniqueId('DSP'); appendCommon('Dispensaciones', 'idDispensacion', id, Object.assign({}, data, { fechaPrevista: toDateOnly(data.fechaPrevista), fechaReal: toDateOnly(data.fechaReal), retrasoDias: retraso })); return apiResponseOk({ idDispensacion: id, retrasoDias: retraso }); } catch (e) { return apiResponseError(e); } }
-function apiAddActivacion(data) { try { validatePatientSelected(data.idPaciente); const items = ['enfermedad', 'objetivoTratamiento', 'administracion', 'conservacion', 'olvidos', 'efectosAdversos', 'contacto', 'decisiones']; items.forEach((k) => validateScore0to2(data[k], k)); const puntuacionTotal = items.reduce((s, k) => s + Number(data[k] || 0), 0); const nivelActivacion = puntuacionTotal <= 5 ? 'baja activación' : puntuacionTotal <= 11 ? 'activación intermedia' : 'alta activación'; const id = createUniqueId('ACT'); appendCommon('ActivacionPaciente', 'idRegistro', id, Object.assign({}, data, { fecha: toDateOnly(data.fecha || new Date()), puntuacionTotal: puntuacionTotal, nivelActivacion: nivelActivacion })); return apiResponseOk({ idRegistro: id, puntuacionTotal: puntuacionTotal, nivelActivacion: nivelActivacion }); } catch (e) { return apiResponseError(e); } }
-function apiAddAutoadministracion(data) { try { validatePatientSelected(data.idPaciente); validateRequired(data, ['fecha', 'resultadoGlobal']); appendCommon('Autoadministracion', 'idRegistro', createUniqueId('AUT'), Object.assign({}, data, { fecha: toDateOnly(data.fecha) })); return apiResponseOk({}); } catch (e) { return apiResponseError(e); } }
-function apiAddRespuesta(data) { try { validatePatientSelected(data.idPaciente); validateRequired(data, ['fecha', 'respuestaGlobal', 'requiereRevisionMedica']); appendCommon('Respuesta', 'idRespuesta', createUniqueId('RSP'), Object.assign({}, data, { fecha: toDateOnly(data.fecha) })); return apiResponseOk({}); } catch (e) { return apiResponseError(e); } }
-function apiAddSeguridad(data) { try { validatePatientSelected(data.idPaciente); validateRequired(data, ['fecha', 'tipoEvento', 'gravedad']); appendCommon('Seguridad', 'idEvento', createUniqueId('SEG'), Object.assign({}, data, { fecha: toDateOnly(data.fecha) })); return apiResponseOk({}); } catch (e) { return apiResponseError(e); } }
-function apiAddIntervencion(data) { try { validatePatientSelected(data.idPaciente); validateRequired(data, ['fecha', 'dominioCMO', 'tipoIntervencion']); appendCommon('IntervencionesCMO', 'idIntervencion', createUniqueId('INT'), Object.assign({}, data, { fecha: toDateOnly(data.fecha) })); return apiResponseOk({}); } catch (e) { return apiResponseError(e); } }
+function apiAddVisita(data) { try { validatePatientSelected(data.idPaciente); validateRequired(data, ['idPaciente', 'fecha', 'tipoVisita', 'modalidad', 'nivelCMO']); validateDate(data.fecha, 'fecha'); const idVisita = createUniqueId('VIS'); const rec = appendCommon('VisitasCMO', 'idVisita', idVisita, Object.assign({}, data, { fecha: toDateOnly(data.fecha), proximaRevision: data.proximaRevision ? toDateOnly(data.proximaRevision) : '' })); updateObjectById('Pacientes', 'idPaciente', data.idPaciente, { fechaUltimaVisita: rec.fecha, nivelCMOActual: rec.nivelCMO, updatedAt: toIsoDateTime(new Date()), updatedBy: getCurrentUserEmail() }); return apiResponseOk(rec);} catch (e){return apiResponseError(e);} }
+function apiAddDispensacion(data){ try{ validatePatientSelected(data.idPaciente); validateRequired(data,['idPaciente','fechaPrevista','fechaReal']); validateDate(data.fechaPrevista,'fechaPrevista'); validateDate(data.fechaReal,'fechaReal'); const rec=appendCommon('Dispensaciones','idDispensacion',createUniqueId('DSP'),Object.assign({},data,{fechaPrevista:toDateOnly(data.fechaPrevista),fechaReal:toDateOnly(data.fechaReal),proximaDispensacion:data.proximaDispensacion?toDateOnly(data.proximaDispensacion):'',retrasoDias:calculateDelayDays(data.fechaPrevista,data.fechaReal)})); return apiResponseOk(rec);}catch(e){return apiResponseError(e);} }
+function apiAddActivacion(data){ try{ validatePatientSelected(data.idPaciente); validateRequired(data,['idPaciente','fecha']); const items=['enfermedad','objetivoTratamiento','administracion','conservacion','olvidos','efectosAdversos','contacto','decisiones']; items.forEach((k)=>validateScore0to2(data[k],k)); const puntuacionTotal=items.reduce((s,k)=>s+Number(data[k]||0),0); const nivelActivacion=puntuacionTotal<=5?'baja activación':puntuacionTotal<=11?'activación intermedia':'alta activación'; const rec=appendCommon('ActivacionPaciente','idRegistro',createUniqueId('ACT'),Object.assign({},data,{fecha:toDateOnly(data.fecha),puntuacionTotal:puntuacionTotal,nivelActivacion:nivelActivacion})); return apiResponseOk(rec);}catch(e){return apiResponseError(e);} }
+function apiAddAutoadministracion(data){ try{ validatePatientSelected(data.idPaciente); validateRequired(data,['idPaciente','fecha','resultadoGlobal']); const rec=appendCommon('Autoadministracion','idRegistro',createUniqueId('AUT'),Object.assign({},data,{fecha:toDateOnly(data.fecha)})); return apiResponseOk(rec);}catch(e){return apiResponseError(e);} }
+function apiAddRespuesta(data){ try{ validatePatientSelected(data.idPaciente); validateRequired(data,['idPaciente','fecha','respuestaGlobal','requiereRevisionMedica']); const rec=appendCommon('Respuesta','idRespuesta',createUniqueId('RSP'),Object.assign({},data,{fecha:toDateOnly(data.fecha)})); return apiResponseOk(rec);}catch(e){return apiResponseError(e);} }
+function apiAddSeguridad(data){ try{ validatePatientSelected(data.idPaciente); validateRequired(data,['idPaciente','fecha','tipoEvento','gravedad']); const rec=appendCommon('Seguridad','idEvento',createUniqueId('SEG'),Object.assign({},data,{fecha:toDateOnly(data.fecha)})); return apiResponseOk(rec);}catch(e){return apiResponseError(e);} }
+function apiAddIntervencion(data){ try{ validatePatientSelected(data.idPaciente); validateRequired(data,['idPaciente','fecha','dominioCMO','tipoIntervencion']); const rec=appendCommon('IntervencionesCMO','idIntervencion',createUniqueId('INT'),Object.assign({},data,{fecha:toDateOnly(data.fecha)})); return apiResponseOk(rec);}catch(e){return apiResponseError(e);} }
 
-function appendCommon(sheet, idField, idValue, data) { const now = toIsoDateTime(new Date()); const user = getCurrentUserEmail(); appendObject(sheet, Object.assign({}, data, { [idField]: idValue, createdAt: now, updatedAt: now, createdBy: user, updatedBy: user })); logAudit('CREATE', sheet, idValue, 'Alta de registro'); }
+function appendCommon(sheet, idField, idValue, data) { const now = toIsoDateTime(new Date()); const user = getCurrentUserEmail(); const record=Object.assign({}, data, { [idField]: idValue, createdAt: now, updatedAt: now, createdBy: user, updatedBy: user }); appendObject(sheet, record); logAudit('CREATE', sheet, idValue, 'Alta de registro'); return record; }
 function validateRequired(data, fields) { fields.forEach((f) => { if (data[f] === undefined || data[f] === null || String(data[f]).trim() === '') throw new Error('Campo obligatorio: ' + f); }); }
 function validateDate(value, field) { const d = new Date(value); if (isNaN(d.getTime())) throw new Error('Fecha inválida en ' + field); }
 function validatePatientSelected(idPaciente) { if (!idPaciente) throw new Error('Debe seleccionar un paciente.'); }
