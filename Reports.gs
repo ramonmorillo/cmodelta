@@ -1,27 +1,32 @@
-function apiBuildReport(idPaciente) {
+function buildReportHtml(bundle, recommendation) {
+  const p = bundle.patient;
+  const disp = bundle.dispensations[0];
+  const act = bundle.activations[0];
+  const rsp = bundle.responses[0];
+  const safe = bundle.safetyEvents[0];
+  const intr = bundle.interventions[0];
+  return "<div><p><b>Informe farmacéutico CMO</b></p>" +
+    "<p>Paciente: " + safeHtml(p.codigoPaciente) + " · Centro: " + safeHtml(p.centro) + " · Estado: " + safeHtml(p.estado) + "</p>" +
+    "<p>Nivel CMO actual: " + safeHtml(p.nivelCMOActual) + " · Tratamiento activo: " + safeHtml(p.tratamientoActivo) + "</p>" +
+    "<p>Última visita: " + safeHtml(p.fechaUltimaVisita || '-') + "</p>" +
+    "<p>Última dispensación: " + safeHtml(disp ? (disp.fechaReal + ' (retraso ' + disp.retrasoDias + ' días)') : 'Sin registros todavía') + "</p>" +
+    "<p>Última activación: " + safeHtml(act ? (act.nivelActivacion + ' (' + act.puntuacionTotal + ')') : 'Sin registros todavía') + "</p>" +
+    "<p>Última respuesta: " + safeHtml(rsp ? rsp.respuestaGlobal : 'Sin registros todavía') + "</p>" +
+    "<p>Último evento de seguridad: " + safeHtml(safe ? (safe.tipoEvento + ' · ' + safe.gravedad) : 'Sin registros todavía') + "</p>" +
+    "<p>Última intervención: " + safeHtml(intr ? (intr.dominioCMO + ' · ' + intr.tipoIntervencion) : 'Sin registros todavía') + "</p>" +
+    "<p><b>Recomendación farmacéutica:</b> " + safeHtml(recommendation || '') + "</p>" +
+    "<p><i>La herramienta no recomienda cambios terapéuticos automáticos. La respuesta debe interpretarse con el equipo médico.</i></p></div>";
+}
+
+function safeHtml(value) {
+  return String(value || '').replace(/[<>&"']/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]; });
+}
+
+function apiBuildReport(idPaciente, recommendation) {
   try {
-    const dashboardRes = apiGetPacienteDashboard(idPaciente);
-    if (!dashboardRes.ok) return dashboardRes;
-    const data = dashboardRes.data;
-    const p = data.paciente;
-    return apiResponseOk({
-      meta: {
-        codigoPaciente: p.codigoPaciente,
-        centro: p.centro,
-        estado: p.estado,
-        tratamientoActivo: p.tratamientoActivo,
-        nivelCMOActual: p.nivelCMOActual,
-        fechaUltimaVisita: p.fechaUltimaVisita || '-'
-      },
-      ultimasDispensaciones: (data.dispensaciones || []).slice(0, 3),
-      ultimaActivacion: (data.activacion || [])[0] || null,
-      ultimaAutoadministracion: (data.autoadministracion || [])[0] || null,
-      ultimaRespuesta: (data.respuesta || [])[0] || null,
-      eventosSeguridad: (data.seguridad || []).slice(0, 5),
-      intervencionesRecientes: (data.intervenciones || []).slice(0, 5),
-      disclaimer: 'Informe farmacéutico de apoyo al seguimiento. No sustituye la valoración clínica médica ni recomienda cambios terapéuticos automáticos.'
-    });
-  } catch (e) {
-    return apiResponseError(e);
-  }
+    const res = getPatientBundle(idPaciente);
+    if (!res.ok) return res;
+    const html = buildReportHtml(res.data, recommendation || '');
+    return apiResponseOk({ reportHtml: html });
+  } catch (e) { return apiResponseError(e); }
 }
