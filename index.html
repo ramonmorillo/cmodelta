@@ -1,132 +1,51 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>cmodelta</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f5f7fb; color: #1f2937; }
-    header { background: #1e3a5f; color: #fff; padding: 16px; }
-    .container { padding: 16px; max-width: 1200px; margin: 0 auto; }
-    .warning { background: #fff7ed; border-left: 4px solid #f97316; padding: 12px; border-radius: 6px; margin: 12px 0; }
-    .grid { display: grid; grid-template-columns: 320px 1fr; gap: 16px; }
-    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
-    input, select, textarea, button { width: 100%; padding: 8px; margin: 6px 0; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
-    button { background: #1e3a5f; color: #fff; cursor: pointer; }
-    .pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-    .n1 { background: #fee2e2; color: #991b1b; }
-    .n2 { background: #fef3c7; color: #92400e; }
-    .n3 { background: #d1fae5; color: #065f46; }
-    .row { display: flex; gap: 8px; }
-    .row > * { flex: 1; }
-    .small { font-size: 12px; color: #6b7280; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-  </style>
-</head>
-<body>
-  <header>
-    <h1 id="appTitle">cmodelta</h1>
-    <div id="appSubtitle">Seguimiento farmacéutico CMO en hepatitis delta</div>
-  </header>
-  <div class="container">
-    <div class="warning" id="warning"></div>
-    <div class="grid">
-      <section class="card">
-        <h3>Pacientes</h3>
-        <input id="search" placeholder="Buscar por código" oninput="loadPacientes(this.value)">
-        <div id="patientList"></div>
-        <hr>
-        <h4>Nuevo/Editar paciente</h4>
-        <input id="idPaciente" type="hidden">
-        <input id="codigoPaciente" placeholder="codigoPaciente (ej. HDV-001)">
-        <input id="centro" placeholder="centro">
-        <input id="fechaAlta" type="date">
-        <input id="estado" placeholder="estado">
-        <input id="tratamientoActivo" placeholder="tratamiento activo">
-        <select id="nivelCMOActual"><option>Nivel 1</option><option>Nivel 2</option><option>Nivel 3</option></select>
-        <textarea id="obsPaciente" placeholder="observaciones"></textarea>
-        <button onclick="savePaciente()">Guardar paciente</button>
-      </section>
-
-      <section class="card">
-        <h3>Ficha del paciente</h3>
-        <div id="detalle">Seleccione un paciente.</div>
-        <hr>
-        <h4>Registrar visita CMO</h4>
-        <div class="row"><input id="vfecha" type="date"><input id="vtipo" placeholder="tipoVisita"></div>
-        <div class="row"><input id="vmodalidad" placeholder="modalidad"><select id="vnivel"><option>Nivel 1</option><option>Nivel 2</option><option>Nivel 3</option></select></div>
-        <textarea id="vobs" placeholder="observaciones"></textarea>
-        <button onclick="addVisita()">Añadir visita</button>
-
-        <h4>Registrar dispensación</h4>
-        <div class="row"><input id="dprev" type="date"><input id="dreal" type="date"></div>
-        <input id="ddias" type="number" placeholder="días cubiertos">
-        <button onclick="addDisp()">Añadir dispensación</button>
-
-        <h4>Registrar activación (0-2)</h4>
-        <div class="row"><input id="a1" type="number" min="0" max="2" placeholder="enfermedad"><input id="a2" type="number" min="0" max="2" placeholder="objetivo"></div>
-        <div class="row"><input id="a3" type="number" min="0" max="2" placeholder="administración"><input id="a4" type="number" min="0" max="2" placeholder="conservación"></div>
-        <div class="row"><input id="a5" type="number" min="0" max="2" placeholder="olvidos"><input id="a6" type="number" min="0" max="2" placeholder="EA"></div>
-        <div class="row"><input id="a7" type="number" min="0" max="2" placeholder="contacto"><input id="a8" type="number" min="0" max="2" placeholder="decisiones"></div>
-        <button onclick="addActivacion()">Añadir activación</button>
-
-        <h4>Informe farmacéutico</h4>
-        <textarea id="recomendacion" placeholder="Recomendación farmacéutica editable"></textarea>
-        <button onclick="buildReport()">Generar informe</button>
-        <div id="report"></div>
-      </section>
-    </div>
-  </div>
-
+<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>cmodelta</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f3f6fa;color:#1f2937}header{background:#1e3a5f;color:#fff;padding:14px}.container{padding:14px;max-width:1300px;margin:auto}.grid{display:grid;grid-template-columns:320px 1fr;gap:12px}.card{background:#fff;border:1px solid #d8e0ea;border-radius:8px;padding:10px}input,select,textarea,button{width:100%;padding:8px;margin:4px 0;border:1px solid #c9d4e3;border-radius:6px;box-sizing:border-box}button{background:#1e3a5f;color:#fff;cursor:pointer}.warn{background:#fff7ed;border-left:4px solid #f97316;padding:8px}.msg{padding:8px;border-radius:6px;margin:6px 0;display:none}.ok{background:#dcfce7}.err{background:#fee2e2}.info{background:#e0f2fe}.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}.n1{background:#fee2e2;color:#991b1b}.n2{background:#fef3c7;color:#92400e}.n3{background:#dcfce7;color:#166534}.cards{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px}.small{font-size:12px;color:#666}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tbl{width:100%;font-size:12px;border-collapse:collapse}.tbl th,.tbl td{border:1px solid #e5e7eb;padding:4px;text-align:left}details{margin:8px 0}details>summary{font-weight:bold;cursor:pointer}@media(max-width:900px){.grid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<header><h2 id='appTitle'>cmodelta</h2><div id='appSubtitle'></div></header><div class='container'>
+<div id='warning' class='warn'></div><div id='msg' class='msg'></div>
+<div class='grid'>
+<section class='card'><h3>Pacientes</h3><input id='search' placeholder='Buscar por código' oninput='loadPacientes(this.value)'><div id='patientList'></div><hr><h4>Nuevo/Editar paciente</h4>
+<input id='idPaciente' type='hidden'><input id='codigoPaciente' placeholder='HDV-001'><input id='centro' placeholder='Centro'>
+<input id='fechaAlta' type='date'><select id='estado'><option value=''>Estado</option><option>Activo</option><option>Seguimiento finalizado</option><option>Perdido</option><option>Suspendido</option></select>
+<select id='tratamientoActivo'><option value=''>Tratamiento activo</option><option>Sí</option><option>No</option></select>
+<select id='nivelCMOActual'><option value=''>Nivel CMO</option><option>Nivel 1</option><option>Nivel 2</option><option>Nivel 3</option></select>
+<textarea id='obsPaciente' placeholder='Observaciones'></textarea><button onclick='savePaciente()'>Guardar paciente</button></section>
+<section class='card'><div id='workspace'></div></section></div></div>
 <script>
-let selectedPacienteId = '';
-
-function init() {
-  google.script.run.withSuccessHandler((data) => {
-    document.getElementById('appTitle').textContent = data.appTitle;
-    document.getElementById('appSubtitle').textContent = data.appSubtitle;
-    document.getElementById('warning').textContent = data.dataWarning;
-    renderPacientes(data.pacientes);
-  }).apiGetInitialData();
-}
-
-function loadPacientes(query='') { google.script.run.withSuccessHandler(renderPacientes).apiListPacientes(query); }
-
-function renderPacientes(list) {
-  const c = document.getElementById('patientList');
-  c.innerHTML = list.map(p => `<div class="card" style="margin:6px 0;cursor:pointer" onclick="selectPaciente('${p.idPaciente}')"><b>${p.codigoPaciente}</b><div class='small'>${p.centro} · ${p.nivelCMOActual}</div></div>`).join('') || '<div class="small">Sin pacientes</div>';
-}
-
-function savePaciente() {
-  const payload = {
-    idPaciente: v('idPaciente'), codigoPaciente: v('codigoPaciente'), centro: v('centro'), fechaAlta: v('fechaAlta'), estado: v('estado'), tratamientoActivo: v('tratamientoActivo'), nivelCMOActual: v('nivelCMOActual'), observaciones: v('obsPaciente')
-  };
-  google.script.run.withSuccessHandler(() => { alert('Paciente guardado'); clearPacienteForm(); loadPacientes(); }).withFailureHandler(showErr).apiSavePaciente(payload);
-}
-
-function clearPacienteForm(){ ['idPaciente','codigoPaciente','centro','fechaAlta','estado','tratamientoActivo','nivelCMOActual','obsPaciente'].forEach(id => document.getElementById(id).value=''); }
-function selectPaciente(id){ selectedPacienteId=id; google.script.run.withSuccessHandler(renderDetalle).withFailureHandler(showErr).apiGetPacienteDashboard(id); }
-function renderDetalle(d){
-  const sem = d.paciente.nivelCMOActual === 'Nivel 1' ? 'n1' : d.paciente.nivelCMOActual === 'Nivel 2' ? 'n2' : 'n3';
-  document.getElementById('detalle').innerHTML = `<div><b>${d.paciente.codigoPaciente}</b> <span class='pill ${sem}'>${d.paciente.nivelCMOActual}</span></div>
-  <div>Tratamiento: ${d.paciente.tratamientoActivo}</div>
-  <div>Última visita: ${d.paciente.fechaUltimaVisita || '-'}</div>
-  <hr><div><b>Últimas visitas:</b> ${d.visitas.map(x=>x.fecha).join(', ')||'-'}</div>
-  <div><b>Últimas dispensaciones:</b> ${d.dispensaciones.map(x=>x.fechaReal+' (retraso '+x.retrasoDias+'d)').join(' | ')||'-'}</div>
-  <div><b>Activación reciente:</b> ${d.activacion ? d.activacion.nivelActivacion+' ('+d.activacion.puntuacionTotal+')' : '-'}</div>
-  <div><b>Autoadministración:</b> ${d.autoadministracion ? d.autoadministracion.resultadoGlobal : '-'}</div>
-  <div><b>Respuesta:</b> ${d.respuesta ? d.respuesta.respuestaGlobal : '-'}</div>
-  <div><b>Seguridad (últimos):</b> ${d.seguridad.length}</div>
-  <div><b>Intervenciones (últimas):</b> ${d.intervenciones.length}</div>`;
-}
-function addVisita(){ google.script.run.withSuccessHandler(()=>selectPaciente(selectedPacienteId)).withFailureHandler(showErr).apiAddVisita({idPaciente:selectedPacienteId,fecha:v('vfecha'),tipoVisita:v('vtipo'),modalidad:v('vmodalidad'),motivo:'',nivelCMO:v('vnivel'),planSeguimiento:'',proximaRevision:'',observaciones:v('vobs')}); }
-function addDisp(){ google.script.run.withSuccessHandler((r)=>{alert('Retraso calculado: '+r.retrasoDias);selectPaciente(selectedPacienteId);}).withFailureHandler(showErr).apiAddDispensacion({idPaciente:selectedPacienteId,fechaPrevista:v('dprev'),fechaReal:v('dreal'),diasCubiertos:v('ddias'),incidencia:'',intervencion:'',proximaDispensacion:'',observaciones:''}); }
-function addActivacion(){ google.script.run.withSuccessHandler((r)=>{alert(r.nivelActivacion);selectPaciente(selectedPacienteId);}).withFailureHandler(showErr).apiAddActivacion({idPaciente:selectedPacienteId,idVisita:'',fecha:new Date().toISOString().slice(0,10),enfermedad:v('a1'),objetivoTratamiento:v('a2'),administracion:v('a3'),conservacion:v('a4'),olvidos:v('a5'),efectosAdversos:v('a6'),contacto:v('a7'),decisiones:v('a8'),observaciones:''}); }
-function buildReport(){ google.script.run.withSuccessHandler(renderReport).withFailureHandler(showErr).apiBuildReport(selectedPacienteId); }
-function renderReport(r){ document.getElementById('report').innerHTML = `<div class='card'><h4>Informe farmacéutico imprimible</h4><p>${r.disclaimer}</p><p><b>Código:</b> ${r.meta.codigoPaciente}<br><b>Centro:</b> ${r.meta.centro}<br><b>Nivel CMO:</b> ${r.meta.nivelCMOActual}<br><b>Tratamiento:</b> ${r.meta.tratamientoActivo}</p><p><b>Dispensaciones:</b> ${(r.dispensaciones||[]).map(d=>d.fechaReal+' (retraso '+d.retrasoDias+'d)').join('; ')||'-'}</p><p><b>Activación:</b> ${r.activacion ? r.activacion.nivelActivacion : '-'}</p><p><b>Autoadministración:</b> ${r.autoadministracion ? r.autoadministracion.resultadoGlobal : '-'}</p><p><b>Respuesta:</b> ${r.respuesta ? r.respuesta.respuestaGlobal : '-'}</p><p><b>Eventos seguridad:</b> ${(r.seguridad||[]).length}</p><p><b>Intervenciones:</b> ${(r.intervenciones||[]).length}</p><p><b>Recomendación:</b><br>${(v('recomendacion')||'').replace(/</g,'&lt;')}</p><button onclick='window.print()'>Imprimir</button></div>`; }
-function v(id){ return document.getElementById(id).value; }
-function showErr(e){ alert(e.message || e); }
+let selectedPacienteId=''; let currentDashboard=null;
+function rpc(fn,args,ok){ google.script.run.withSuccessHandler((r)=>{ if(!r||!r.ok) return show('err',(r&&r.error)||'Error'); ok(r.data); }).withFailureHandler(e=>show('err',e.message||e)).apply(null,[fn].concat(args||[])); }
+function call(name,...args){ return new Promise((res)=>google.script.run.withSuccessHandler(res).withFailureHandler((e)=>res({ok:false,error:e.message||String(e)}))[name](...args)); }
+async function init(){ const r=await call('apiGetInitialData'); if(!r.ok) return show('err',r.error); app(r.data); }
+function app(d){ q('appTitle').textContent=d.appTitle; q('appSubtitle').textContent=d.appSubtitle; q('warning').textContent=d.dataWarning; renderPacientes(d.pacientes); renderNoPatient(); }
+async function loadPacientes(qs=''){ const r=await call('apiListPacientes',qs); if(r.ok) renderPacientes(r.data); }
+function renderPacientes(list){ q('patientList').innerHTML=(list||[]).map(p=>`<div class='card' style='margin:6px 0;cursor:pointer' onclick="selectPaciente('${p.idPaciente}')"><b>${esc(p.codigoPaciente)}</b><div class='small'>${esc(p.centro)} · ${esc(p.nivelCMOActual)}</div></div>`).join('')||"<div class='small'>Sin pacientes</div>"; }
+function renderNoPatient(){ q('workspace').innerHTML="<h3>Ficha del paciente</h3><div class='small'>Seleccione o cree un paciente para registrar seguimiento farmacéutico.</div>"; }
+async function savePaciente(){ const payload={idPaciente:v('idPaciente'),codigoPaciente:v('codigoPaciente'),centro:v('centro'),fechaAlta:v('fechaAlta'),estado:v('estado'),tratamientoActivo:v('tratamientoActivo'),nivelCMOActual:v('nivelCMOActual'),observaciones:v('obsPaciente')}; const r=await call('apiSavePaciente',payload); if(!r.ok) return show('err',r.error); show('ok','Paciente guardado correctamente.'); clearPacienteForm(); await loadPacientes(v('search')); await selectPaciente(r.data.idPaciente); }
+function clearPacienteForm(){['idPaciente','codigoPaciente','centro','fechaAlta','estado','tratamientoActivo','nivelCMOActual','obsPaciente'].forEach(id=>q(id).value='');}
+async function selectPaciente(id){ selectedPacienteId=id; const r=await call('apiGetPacienteDashboard',id); if(!r.ok) return show('err',r.error); currentDashboard=r.data; renderDashboard(); }
+function renderDashboard(){ const d=currentDashboard,p=d.paciente,sem=p.nivelCMOActual==='Nivel 1'?'n1':p.nivelCMOActual==='Nivel 2'?'n2':'n3';
+q('workspace').innerHTML=`<h3>Ficha del paciente</h3><div class='cards'>${card('Código',p.codigoPaciente)}${card('Centro',p.centro)}${card('Estado',p.estado)}${card('Tratamiento',p.tratamientoActivo)}${card('Nivel CMO',`<span class='pill ${sem}'>${p.nivelCMOActual}</span>`)}${card('Fecha alta',p.fechaAlta)}${card('Última visita',p.fechaUltimaVisita||'-')}</div>
+${sectionVisitas(d)}${sectionDisp(d)}${sectionActivacion(d)}${sectionAuto(d)}${sectionResp(d)}${sectionSeg(d)}${sectionInt(d)}${sectionInf()}`; }
+function card(k,v){return `<div class='card'><div class='small'>${k}</div><div>${v}</div></div>`;} function table(h,rows){return `<table class='tbl'><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.join('')||'<tr><td colspan="99">Sin registros</td></tr>'}</table>`;}
+function sectionVisitas(d){return `<details open><summary>Visitas CMO</summary><div class='row'><input id='vfecha' type='date'><select id='vtipo'><option>Inicial</option><option>Seguimiento</option><option>Revisión extraordinaria</option><option>Final</option></select></div><div class='row'><select id='vmodalidad'><option>Presencial</option><option>Telefónica</option><option>Telemática</option></select><select id='vnivel'><option>Nivel 1</option><option>Nivel 2</option><option>Nivel 3</option></select></div><textarea id='vmotivo' placeholder='Motivo'></textarea><textarea id='vplan' placeholder='Plan seguimiento'></textarea><div class='row'><input id='vproxima' type='date'><input id='vobs' placeholder='Observaciones'></div><button onclick='addVisita()'>Añadir</button>${table(['Fecha','Tipo','Modalidad','Nivel'],d.visitas.map(x=>`<tr><td>${x.fecha||''}</td><td>${x.tipoVisita||''}</td><td>${x.modalidad||''}</td><td>${x.nivelCMO||''}</td></tr>`))}</details>`;}
+function sectionDisp(d){return `<details><summary>Dispensaciones</summary><div class='row'><input id='dprev' type='date'><input id='dreal' type='date' onchange='calcDelay()'></div><div class='row'><input id='ddias' type='number' placeholder='Días cubiertos'><select id='dinc'><option>No</option><option>Sí</option></select></div><div id='delay' class='small'>Retraso: 0 días</div><textarea id='dinter' placeholder='Intervención'></textarea><div class='row'><input id='dprox' type='date'><input id='dobs' placeholder='Observaciones'></div><button onclick='addDisp()'>Añadir</button>${table(['Prevista','Real','Retraso','Días','Incidencia','Próxima'],d.dispensaciones.map(x=>`<tr><td>${x.fechaPrevista||''}</td><td>${x.fechaReal||''}</td><td>${x.retrasoDias||0}</td><td>${x.diasCubiertos||''}</td><td>${x.incidencia||''}</td><td>${x.proximaDispensacion||''}</td></tr>`))}</details>`;}
+function sectionActivacion(d){const o="<option value='0'>0=No</option><option value='1'>1=Parcialmente</option><option value='2'>2=Sí</option>";const mk=id=>`<select id='${id}'>${o}</select>`; return `<details><summary>Activación</summary><div class='small'>Índice operativo de apoyo a la entrevista farmacéutica, no cuestionario validado.</div><div class='row'>${mk('a1')}${mk('a2')}</div><div class='row'>${mk('a3')}${mk('a4')}</div><div class='row'>${mk('a5')}${mk('a6')}</div><div class='row'>${mk('a7')}${mk('a8')}</div><button onclick='addAct()'>Añadir</button>${table(['Fecha','Puntuación','Nivel'],d.activacion.map(x=>`<tr><td>${x.fecha||''}</td><td>${x.puntuacionTotal||''}</td><td>${x.nivelActivacion||''}</td></tr>`))}</details>`;}
+function sectionAuto(d){const ynp=['Sí','No','Parcial'];const sel=(id,arr)=>`<select id='${id}'>${arr.map(x=>`<option>${x}</option>`).join('')}</select>`;return `<details><summary>Autoadministración</summary><input id='aut_fecha' type='date'><div class='row'>${sel('aut1',ynp)}${sel('aut2',ynp)}</div><div class='row'>${sel('aut3',ynp)}${sel('aut4',ynp)}</div><div class='row'>${sel('aut5',ynp)}${sel('aut6',ynp)}</div><div class='row'>${sel('aut7',['Alta','Intermedia','Baja'])}${sel('aut8',['Sí','No'])}</div>${sel('aut9',['Autónomo','Autónomo con dudas','Necesita reeducación','Necesita apoyo externo'])}<textarea id='aut_obs'></textarea><button onclick='addAuto()'>Añadir</button>${table(['Fecha','Resultado','Reeducación'],d.autoadministracion.map(x=>`<tr><td>${x.fecha||''}</td><td>${x.resultadoGlobal||''}</td><td>${x.necesitaReeducacion||''}</td></tr>`))}</details>`;}
+function sectionResp(d){return `<details><summary>Respuesta</summary><div class='small'>La herramienta no recomienda cambios terapéuticos automáticos. Clasificación orientativa en coordinación con equipo médico.</div><input id='rfecha' type='date'><div class='row'><input id='rmes' placeholder='Mes tratamiento'><input id='rarn' placeholder='ARN VHD'></div><div class='row'><input id='ralt' placeholder='ALT'><select id='rglobal'><option>favorable</option><option>parcial</option><option>discordante</option><option>no valorable</option><option>posible no respuesta/requiere revisión médica</option></select></div><div class='row'><input id='rvirol' placeholder='Respuesta virológica'><input id='rbioq' placeholder='Respuesta bioquímica'></div><select id='rrev'><option>Sí</option><option>No</option></select><textarea id='rcom'></textarea><button onclick='addResp()'>Añadir</button>${table(['Fecha','Global','Revisión médica'],d.respuesta.map(x=>`<tr><td>${x.fecha||''}</td><td>${x.respuestaGlobal||''}</td><td>${x.requiereRevisionMedica||''}</td></tr>`))}</details>`;}
+function sectionSeg(d){return `<details><summary>Seguridad</summary><input id='sfecha' type='date'><select id='stipo'><option>Reacción local</option><option>Alteración analítica</option><option>Problema de conservación</option><option>Interrupción no planificada</option><option>Síntomas de alarma</option><option>Otro</option></select><div class='row'><select id='sgrav'><option>Leve</option><option>Moderada</option><option>Grave</option></select><select id='srel'><option>No relacionada</option><option>Posible</option><option>Probable</option><option>No valorable</option></select></div><input id='sacc' placeholder='Acción realizada'><div class='row'><select id='sres'><option>Sí</option><option>No</option></select><select id='shep'><option>Sí</option><option>No</option></select></div><textarea id='sobs'></textarea><button onclick='addSeg()'>Añadir</button>${table(['Fecha','Evento','Gravedad','Resuelto'],d.seguridad.map(x=>`<tr><td>${x.fecha||''}</td><td>${x.tipoEvento||''}</td><td>${x.gravedad||''}</td><td>${x.resuelto||''}</td></tr>`))}</details>`;}
+function sectionInt(d){return `<details><summary>Intervenciones CMO</summary><input id='ifecha' type='date'><select id='idom'><option>Capacidad</option><option>Motivación</option><option>Oportunidad</option></select><input id='itipo' placeholder='Tipo intervención'><textarea id='idesc'></textarea><div class='row'><input id='ires' placeholder='Resultado'><select id='iacep'><option>Sí</option><option>No</option><option>Pendiente</option></select></div><textarea id='iseg'></textarea><button onclick='addInt()'>Añadir</button>${table(['Fecha','Dominio','Tipo','Aceptada'],d.intervenciones.map(x=>`<tr><td>${x.fecha||''}</td><td>${x.dominioCMO||''}</td><td>${x.tipoIntervencion||''}</td><td>${x.aceptada||''}</td></tr>`))}</details>`;}
+function sectionInf(){return `<details><summary>Informe</summary><textarea id='recomendacion' placeholder='Recomendación farmacéutica editable'></textarea><button onclick='buildReport()'>Generar informe</button><div id='report'></div></details>`;}
+async function addVisita(){await submit('apiAddVisita',{idPaciente:selectedPacienteId,fecha:v('vfecha'),tipoVisita:v('vtipo'),modalidad:v('vmodalidad'),motivo:v('vmotivo'),nivelCMO:v('vnivel'),planSeguimiento:v('vplan'),proximaRevision:v('vproxima'),observaciones:v('vobs')});}
+function calcDelay(){const p=v('dprev'),r=v('dreal');if(!p||!r)return;q('delay').textContent='Retraso: '+Math.max(0,Math.floor((new Date(r)-new Date(p))/86400000))+' días';}
+async function addDisp(){const rs=await call('apiAddDispensacion',{idPaciente:selectedPacienteId,fechaPrevista:v('dprev'),fechaReal:v('dreal'),diasCubiertos:v('ddias'),incidencia:v('dinc'),intervencion:v('dinter'),proximaDispensacion:v('dprox'),observaciones:v('dobs')});if(!rs.ok)return show('err',rs.error);show('ok','Dispensación guardada. Retraso: '+rs.data.retrasoDias+' días.');await selectPaciente(selectedPacienteId);}
+async function addAct(){await submit('apiAddActivacion',{idPaciente:selectedPacienteId,fecha:new Date().toISOString().slice(0,10),enfermedad:v('a1'),objetivoTratamiento:v('a2'),administracion:v('a3'),conservacion:v('a4'),olvidos:v('a5'),efectosAdversos:v('a6'),contacto:v('a7'),decisiones:v('a8'),observaciones:''});}
+async function addAuto(){await submit('apiAddAutoadministracion',{idPaciente:selectedPacienteId,fecha:v('aut_fecha'),conservacionCorrecta:v('aut1'),preparacionCorrecta:v('aut2'),administracionCorrecta:v('aut3'),rotacionZonas:v('aut4'),manejoOlvidos:v('aut5'),manejoResiduos:v('aut6'),confianzaPaciente:v('aut7'),necesitaReeducacion:v('aut8'),resultadoGlobal:v('aut9'),observaciones:v('aut_obs')});}
+async function addResp(){await submit('apiAddRespuesta',{idPaciente:selectedPacienteId,fecha:v('rfecha'),mesTratamiento:v('rmes'),arnVhd:v('rarn'),alt:v('ralt'),respuestaVirologica:v('rvirol'),respuestaBioquimica:v('rbioq'),respuestaGlobal:v('rglobal'),requiereRevisionMedica:v('rrev'),comentario:v('rcom')});}
+async function addSeg(){await submit('apiAddSeguridad',{idPaciente:selectedPacienteId,fecha:v('sfecha'),tipoEvento:v('stipo'),gravedad:v('sgrav'),relacionTratamiento:v('srel'),accionRealizada:v('sacc'),resuelto:v('sres'),comunicadoHepatologia:v('shep'),observaciones:v('sobs')});}
+async function addInt(){await submit('apiAddIntervencion',{idPaciente:selectedPacienteId,fecha:v('ifecha'),dominioCMO:v('idom'),tipoIntervencion:v('itipo'),descripcion:v('idesc'),resultado:v('ires'),aceptada:v('iacep'),seguimiento:v('iseg')});}
+async function submit(fn,payload){if(!selectedPacienteId)return show('info','Seleccione paciente.');const r=await call(fn,payload);if(!r.ok)return show('err',r.error);show('ok','Registro guardado correctamente.');await selectPaciente(selectedPacienteId);}
+async function buildReport(){const r=await call('apiBuildReport',selectedPacienteId);if(!r.ok)return show('err',r.error);const x=r.data; q('report').innerHTML=`<div class='card'><p class='small'>${x.disclaimer}</p><b>${x.meta.codigoPaciente}</b> · ${x.meta.centro}<br>Estado: ${x.meta.estado} · Tratamiento: ${x.meta.tratamientoActivo} · Nivel: ${x.meta.nivelCMOActual}<br>Última visita: ${x.meta.fechaUltimaVisita}<p><b>Dispensaciones recientes:</b> ${(x.ultimasDispensaciones||[]).map(d=>d.fechaReal+' (+'+d.retrasoDias+'d)').join(', ')||'-'}</p><p><b>Activación:</b> ${x.ultimaActivacion?x.ultimaActivacion.nivelActivacion:'-'}</p><p><b>Autoadministración:</b> ${x.ultimaAutoadministracion?x.ultimaAutoadministracion.resultadoGlobal:'-'}</p><p><b>Respuesta:</b> ${x.ultimaRespuesta?x.ultimaRespuesta.respuestaGlobal:'-'}</p><p><b>Recomendación:</b> ${esc(v('recomendacion'))}</p><button onclick='window.print()'>Imprimir</button></div>`;}
+function show(type,text){const m=q('msg');m.className='msg '+(type==='ok'?'ok':type==='err'?'err':'info');m.style.display='block';m.textContent=text;} function q(id){return document.getElementById(id);} function v(id){return q(id).value;} function esc(s){return String(s||'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));}
 init();
-</script>
-</body>
-</html>
+</script></body></html>

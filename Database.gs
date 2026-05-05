@@ -145,3 +145,7 @@ function logAudit(action, table, recordId, detail) {
     detail || ''
   ]);
 }
+
+function createUniqueId(prefix) {
+  return prefix + '-' + Utilities.getUuid().slice(0, 8) + '-' + new Date().getTime();
+}
