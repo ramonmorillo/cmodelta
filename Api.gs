@@ -1,5 +1,5 @@
-function apiResponseOk(data) { return { ok: true, data: data }; }
-function apiResponseError(error) { return { ok: false, error: error && error.message ? error.message : String(error) }; }
+function apiResponseOk(data, message) { return { ok: true, data: data, message: message || '' }; }
+function apiResponseError(error, code, details) { return { ok: false, error: { code: code || 'ERR_GENERIC', message: error && error.message ? error.message : String(error), details: details || '' } }; }
 
 function toText(v) { return String(v || '').trim(); }
 function toPatientDto(row) {
@@ -23,7 +23,7 @@ function listPatients(query) {
     const filtered = !q ? all : all.filter((p) => p.codigoPaciente.toLowerCase().includes(q));
     filtered.sort((a, b) => a.codigoPaciente.localeCompare(b.codigoPaciente));
     return apiResponseOk(filtered);
-  } catch (e) { return apiResponseError(e); }
+  } catch (e) { return apiResponseError(e, 'ERR_LIST_PATIENTS'); }
 }
 
 function createPatient(data) {
@@ -49,8 +49,8 @@ function createPatient(data) {
     };
     appendObject('Pacientes', Object.assign({}, createdPatient, { createdAt: now, updatedAt: now, createdBy: user, updatedBy: user }));
     logAudit('CREATE', 'Pacientes', createdPatient.idPaciente, 'Alta paciente ' + normalizedCode);
-    return apiResponseOk(createdPatient);
-  } catch (e) { return apiResponseError(e); }
+    return apiResponseOk(createdPatient, 'Paciente creado correctamente.');
+  } catch (e) { return apiResponseError(e, 'ERR_LIST_PATIENTS'); }
 }
 
 function updatePatient(idPaciente, data) {
@@ -74,8 +74,8 @@ function updatePatient(idPaciente, data) {
     };
     if (!updateObjectById('Pacientes', 'idPaciente', idPaciente, changes)) throw new Error('Paciente no encontrado.');
     logAudit('UPDATE', 'Pacientes', idPaciente, 'Actualización paciente ' + normalizedCode);
-    return apiResponseOk(getSheetDataObject('Pacientes').find((p) => String(p.idPaciente) === String(idPaciente)));
-  } catch (e) { return apiResponseError(e); }
+    return apiResponseOk(getSheetDataObject('Pacientes').find((p) => String(p.idPaciente) === String(idPaciente)), 'Paciente actualizado correctamente.');
+  } catch (e) { return apiResponseError(e, 'ERR_LIST_PATIENTS'); }
 }
 
 function getPatientBundle(idPaciente) {
@@ -97,7 +97,7 @@ function getPatientBundle(idPaciente) {
     };
     bundle.reportHtml = buildReportHtml(bundle, '');
     return apiResponseOk(bundle);
-  } catch (e) { return apiResponseError(e); }
+  } catch (e) { return apiResponseError(e, 'ERR_LIST_PATIENTS'); }
 }
 
 function createVisit(data) { return apiAddVisita(data); }
@@ -124,6 +124,6 @@ function apiAddIntervencion(data){ try{ validatePatientSelected(data.idPaciente)
 function appendCommon(sheet, idField, idValue, data) { const now = toIsoDateTime(new Date()); const user = getCurrentUserEmail(); const record=Object.assign({}, data, { [idField]: idValue, createdAt: now, updatedAt: now, createdBy: user, updatedBy: user }); appendObject(sheet, record); logAudit('CREATE', sheet, idValue, 'Alta de registro'); return record; }
 function validateRequired(data, fields) { fields.forEach((f) => { if (data[f] === undefined || data[f] === null || String(data[f]).trim() === '') throw new Error('Campo obligatorio: ' + f); }); }
 function validateDate(value, field) { const d = new Date(value); if (isNaN(d.getTime())) throw new Error('Fecha inválida en ' + field); }
-function validatePatientSelected(idPaciente) { if (!idPaciente) throw new Error('Debe seleccionar un paciente.'); }
+function validatePatientSelected(idPaciente) { if (!idPaciente || String(idPaciente).trim() === '') throw new Error('Debe seleccionar un paciente.'); }
 function validateScore0to2(value, field) { const n = Number(value); if (isNaN(n) || n < 0 || n > 2) throw new Error('El campo ' + field + ' debe estar entre 0 y 2.'); }
 function calculateDelayDays(fechaPrevista, fechaReal) { return Math.max(0, Math.floor((new Date(fechaReal) - new Date(fechaPrevista)) / 86400000)); }

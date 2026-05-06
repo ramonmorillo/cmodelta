@@ -86,13 +86,20 @@ function getSheetDataObject(sheetName) {
 }
 
 function appendObject(sheetName, dataObj) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-  const headers = TABLE_SCHEMAS[sheetName];
-  const row = headers.map((h) => dataObj[h] !== undefined ? dataObj[h] : '');
-  sheet.appendRow(row);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const headers = TABLE_SCHEMAS[sheetName];
+    const row = headers.map((h) => dataObj[h] !== undefined ? dataObj[h] : '');
+    sheet.appendRow(row);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function updateObjectById(sheetName, idField, idValue, changes) {
+  if (!idValue || String(idValue).trim() === '') throw new Error('ID vacío en updateObjectById');
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   const values = sheet.getDataRange().getValues();
   const headers = values[0];
@@ -136,14 +143,20 @@ function getCurrentUserEmail() {
 function logAudit(action, table, recordId, detail) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('AuditLog');
   if (!sheet) return;
-  sheet.appendRow([
-    toIsoDateTime(new Date()),
-    getCurrentUserEmail(),
-    action,
-    table,
-    recordId,
-    detail || ''
-  ]);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    sheet.appendRow([
+      toIsoDateTime(new Date()),
+      getCurrentUserEmail(),
+      action,
+      table,
+      recordId,
+      detail || ''
+    ]);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function createUniqueId(prefix) {
