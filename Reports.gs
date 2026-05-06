@@ -20,7 +20,7 @@ function buildReportHtml(bundle, recommendation) {
     "<h2>Informe farmacéutico CMO-HDV</h2><p class='sub'>Seguimiento farmacéutico centrado en resultados en salud en hepatitis delta</p>" +
     block('Datos seudonimizados', [
       ['Código paciente', p.codigoPaciente], ['Centro', p.centro], ['Estado', p.estado], ['Tratamiento activo', p.tratamientoActivo],
-      ['Nivel CMO actual', p.nivelCMOActual], ['Fecha de alta', p.fechaAlta], ['Fecha última visita', p.fechaUltimaVisita || 'Sin registros todavía']
+      ['Nivel CMO actual', p.nivelCMOActual], ['Fecha de alta', p.fechaAlta || 'No registrada'], ['Fecha última visita', p.fechaUltimaVisita || 'Sin registros todavía']
     ]) +
     "<div class='rblock'><h3>Resumen ejecutivo</h3><p>" + resumen + "</p></div>" +
     block('Bloque CMO', [['Nivel actual', p.nivelCMOActual], ['Última visita CMO', v ? v.fecha : 'Sin registros todavía'], ['Plan de seguimiento', v ? (v.planSeguimiento || '-') : 'Sin registros todavía'], ['Necesidades detectadas', v ? (v.motivo || '-') : 'Sin registros todavía']]) +

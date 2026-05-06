@@ -28,8 +28,8 @@ function listPatients(query) {
 
 function createPatient(data) {
   try {
-    validateRequired(data, ['codigoPaciente', 'centro', 'fechaAlta', 'estado', 'tratamientoActivo', 'nivelCMOActual']);
-    validateDate(data.fechaAlta, 'fechaAlta');
+    validateRequired(data, ['codigoPaciente', 'centro', 'estado', 'tratamientoActivo', 'nivelCMOActual']);
+    if (toText(data.fechaAlta)) validateDate(data.fechaAlta, 'fechaAlta');
     const normalizedCode = toText(data.codigoPaciente).toUpperCase();
     const duplicate = getSheetDataObject('Pacientes').find((p) => toText(p.codigoPaciente).toUpperCase() === normalizedCode);
     if (duplicate) throw new Error('Ya existe un paciente con ese codigoPaciente.');
@@ -40,7 +40,7 @@ function createPatient(data) {
       idPaciente: createUniqueId('PAC'),
       codigoPaciente: normalizedCode,
       centro: toText(data.centro),
-      fechaAlta: toDateOnly(data.fechaAlta),
+      fechaAlta: toText(data.fechaAlta) ? toDateOnly(data.fechaAlta) : '',
       estado: toText(data.estado),
       tratamientoActivo: toText(data.tratamientoActivo),
       nivelCMOActual: toText(data.nivelCMOActual),
@@ -56,15 +56,15 @@ function createPatient(data) {
 function updatePatient(idPaciente, data) {
   try {
     validatePatientSelected(idPaciente);
-    validateRequired(data, ['codigoPaciente', 'centro', 'fechaAlta', 'estado', 'tratamientoActivo', 'nivelCMOActual']);
-    validateDate(data.fechaAlta, 'fechaAlta');
+    validateRequired(data, ['codigoPaciente', 'centro', 'estado', 'tratamientoActivo', 'nivelCMOActual']);
+    if (toText(data.fechaAlta)) validateDate(data.fechaAlta, 'fechaAlta');
     const normalizedCode = toText(data.codigoPaciente).toUpperCase();
     const duplicate = getSheetDataObject('Pacientes').find((p) => toText(p.codigoPaciente).toUpperCase() === normalizedCode && String(p.idPaciente) !== String(idPaciente));
     if (duplicate) throw new Error('Ya existe un paciente con ese codigoPaciente.');
     const changes = {
       codigoPaciente: normalizedCode,
       centro: toText(data.centro),
-      fechaAlta: toDateOnly(data.fechaAlta),
+      fechaAlta: toText(data.fechaAlta) ? toDateOnly(data.fechaAlta) : '',
       estado: toText(data.estado),
       tratamientoActivo: toText(data.tratamientoActivo),
       nivelCMOActual: toText(data.nivelCMOActual),
