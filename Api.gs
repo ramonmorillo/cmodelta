@@ -1,5 +1,6 @@
 function apiResponseOk(data, message) { return { ok: true, data: data, message: message || '' }; }
 function apiResponseError(error, code, details) { return { ok: false, error: { code: code || 'ERR_GENERIC', message: error && error.message ? error.message : String(error), details: details || '' } }; }
+function apiLog(label, data) { console.log('[cmodelta] ' + label + ' :: ' + JSON.stringify(data || {})); }
 
 function toText(v) { return String(v || '').trim(); }
 function toPatientDto(row) {
@@ -18,16 +19,22 @@ function toPatientDto(row) {
 
 function listPatients(query) {
   try {
+    apiLog('apiListPacientes.call', { query: toText(query) });
     const all = getSheetDataObject('Pacientes').map(toPatientDto);
     const q = toText(query).toLowerCase();
     const filtered = !q ? all : all.filter((p) => p.codigoPaciente.toLowerCase().includes(q));
     filtered.sort((a, b) => a.codigoPaciente.localeCompare(b.codigoPaciente));
-    return apiResponseOk(filtered);
-  } catch (e) { return apiResponseError(e, 'ERR_LIST_PATIENTS'); }
+    const res = apiResponseOk(filtered);
+    apiLog('apiListPacientes.ok', { count: filtered.length });
+    return res;
+  } catch (e) { apiLog('apiListPacientes.error', { message: e.message }); return apiResponseError(e, 'ERR_LIST_PATIENTS'); }
 }
+
+function apiListPacientes(query) { return listPatients(query); }
 
 function createPatient(data) {
   try {
+    apiLog('apiSavePaciente.create.call', { hasCodigo: !!toText(data && data.codigoPaciente), centro: toText(data && data.centro), estado: toText(data && data.estado) });
     validateRequired(data, ['codigoPaciente', 'centro', 'estado', 'tratamientoActivo', 'nivelCMOActual']);
     if (toText(data.fechaAlta)) validateDate(data.fechaAlta, 'fechaAlta');
     const normalizedCode = toText(data.codigoPaciente).toUpperCase();
@@ -49,12 +56,14 @@ function createPatient(data) {
     };
     appendObject('Pacientes', Object.assign({}, createdPatient, { createdAt: now, updatedAt: now, createdBy: user, updatedBy: user }));
     logAudit('CREATE', 'Pacientes', createdPatient.idPaciente, 'Alta paciente ' + normalizedCode);
+    apiLog('apiSavePaciente.create.ok', { idPaciente: createdPatient.idPaciente, operation: 'create' });
     return apiResponseOk(createdPatient, 'Paciente creado correctamente.');
-  } catch (e) { return apiResponseError(e, 'ERR_LIST_PATIENTS'); }
+  } catch (e) { apiLog('apiSavePaciente.create.error', { message: e.message }); return apiResponseError(e, 'ERR_CREATE_PATIENT'); }
 }
 
 function updatePatient(idPaciente, data) {
   try {
+    apiLog('apiSavePaciente.update.call', { idPaciente: toText(idPaciente), codigoPaciente: toText(data && data.codigoPaciente) });
     validatePatientSelected(idPaciente);
     validateRequired(data, ['codigoPaciente', 'centro', 'estado', 'tratamientoActivo', 'nivelCMOActual']);
     if (toText(data.fechaAlta)) validateDate(data.fechaAlta, 'fechaAlta');
@@ -74,8 +83,34 @@ function updatePatient(idPaciente, data) {
     };
     if (!updateObjectById('Pacientes', 'idPaciente', idPaciente, changes)) throw new Error('Paciente no encontrado.');
     logAudit('UPDATE', 'Pacientes', idPaciente, 'Actualización paciente ' + normalizedCode);
+    apiLog('apiSavePaciente.update.ok', { idPaciente: toText(idPaciente), operation: 'update' });
     return apiResponseOk(getSheetDataObject('Pacientes').find((p) => String(p.idPaciente) === String(idPaciente)), 'Paciente actualizado correctamente.');
-  } catch (e) { return apiResponseError(e, 'ERR_LIST_PATIENTS'); }
+  } catch (e) { apiLog('apiSavePaciente.update.error', { idPaciente: toText(idPaciente), message: e.message }); return apiResponseError(e, 'ERR_UPDATE_PATIENT'); }
+}
+
+function apiSavePaciente(payload) {
+  try {
+    if (!payload || typeof payload !== 'object') throw new Error('Payload inválido para guardar paciente.');
+    const idPaciente = toText(payload.idPaciente);
+    return idPaciente ? updatePatient(idPaciente, payload) : createPatient(payload);
+  } catch (e) {
+    return apiResponseError(e, 'ERR_SAVE_PATIENT');
+  }
+}
+
+function apiDeactivatePaciente(idPaciente) {
+  try {
+    validatePatientSelected(idPaciente);
+    const changes = { estado: 'Suspendido', updatedAt: toIsoDateTime(new Date()), updatedBy: getCurrentUserEmail() };
+    if (!updateObjectById('Pacientes', 'idPaciente', idPaciente, changes)) throw new Error('Paciente no encontrado.');
+    const updated = getSheetDataObject('Pacientes').find((p) => String(p.idPaciente) === String(idPaciente));
+    logAudit('DEACTIVATE', 'Pacientes', idPaciente, 'Desactivación lógica de paciente');
+    apiLog('apiDeactivatePaciente.ok', { idPaciente: toText(idPaciente), operation: 'delete-logical' });
+    return apiResponseOk(updated, 'Paciente desactivado correctamente');
+  } catch (e) {
+    apiLog('apiDeactivatePaciente.error', { idPaciente: toText(idPaciente), message: e.message });
+    return apiResponseError(e, 'ERR_DEACTIVATE_PATIENT');
+  }
 }
 
 function getPatientBundle(idPaciente) {
