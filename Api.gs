@@ -127,3 +127,48 @@ function validateDate(value, field) { const d = new Date(value); if (isNaN(d.get
 function validatePatientSelected(idPaciente) { if (!idPaciente || String(idPaciente).trim() === '') throw new Error('Debe seleccionar un paciente.'); }
 function validateScore0to2(value, field) { const n = Number(value); if (isNaN(n) || n < 0 || n > 2) throw new Error('El campo ' + field + ' debe estar entre 0 y 2.'); }
 function calculateDelayDays(fechaPrevista, fechaReal) { return Math.max(0, Math.floor((new Date(fechaReal) - new Date(fechaPrevista)) / 86400000)); }
+
+function getDashboardGlobal() {
+  try {
+    const patients = getSheetDataObject('Pacientes').map(toPatientDto);
+    const visits = getSheetDataObject('VisitasCMO');
+    const byPatientVisits = {};
+    visits.forEach(function (v) { const id = toText(v.idPaciente); if (!id) return; if (!byPatientVisits[id]) byPatientVisits[id] = []; byPatientVisits[id].push(v); });
+
+    const counts = { total: patients.length, activos: 0, inactivos: 0, tratamientoActivo: 0, sinVisitas: 0, conUltimaVisita: 0, pendientesSeguimiento: 0 };
+    const levels = { n1: 0, n2: 0, n3: 0, sinNivel: 0 };
+
+    const rows = patients.map(function (p) {
+      const estado = toText(p.estado).toLowerCase();
+      const tr = toText(p.tratamientoActivo).toLowerCase();
+      const nivel = toText(p.nivelCMOActual);
+      const hasVisit = !!toText(p.fechaUltimaVisita);
+      const pVisits = byPatientVisits[toText(p.idPaciente)] || [];
+      const pending = pVisits.some(function (x) { return toText(x.proximaRevision) && toText(x.proximaRevision) <= toDateOnly(new Date()); });
+
+      if (estado === 'activo') counts.activos += 1; else counts.inactivos += 1;
+      if (tr === 'sí' || tr === 'si') counts.tratamientoActivo += 1;
+      if (hasVisit) counts.conUltimaVisita += 1; else counts.sinVisitas += 1;
+      if (pending) counts.pendientesSeguimiento += 1;
+
+      if (nivel === 'Nivel 1') levels.n1 += 1;
+      else if (nivel === 'Nivel 2') levels.n2 += 1;
+      else if (nivel === 'Nivel 3') levels.n3 += 1;
+      else levels.sinNivel += 1;
+
+      return {
+        codigoPaciente: p.codigoPaciente,
+        centro: p.centro,
+        estado: p.estado,
+        tratamientoActivo: p.tratamientoActivo,
+        nivelCMOActual: p.nivelCMOActual,
+        fechaUltimaVisita: p.fechaUltimaVisita,
+        resumen: hasVisit ? 'Seguimiento en curso' : 'Sin visitas registradas todavía'
+      };
+    });
+
+    return apiResponseOk({ counts: counts, levels: levels, patients: rows }, 'Dashboard global calculado correctamente');
+  } catch (e) {
+    return apiResponseError(e, 'ERR_DASHBOARD_GLOBAL');
+  }
+}
